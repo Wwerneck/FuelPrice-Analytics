@@ -7,3 +7,13 @@ baixar ou transformar dados durante a abertura do dashboard.
 
 O snapshot é reproduzível com `python main.py`; a camada operacional completa em
 `data/processed/` permanece ignorada pelo Git.
+
+Para reconstruir a versão compacta usada na nuvem, execute:
+
+```bash
+python scripts/build_dashboard_snapshot.py
+```
+
+Somente colunas consumidas pelo dashboard são publicadas e dimensões repetitivas
+usam tipos categóricos. Métricas e agregações utilizam todas as observações; apenas
+o box plot aplica uma amostra determinística para evitar excesso de memória/transferência.

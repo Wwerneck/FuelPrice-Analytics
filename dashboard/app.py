@@ -157,7 +157,10 @@ with overview:
                  color_discrete_map=PRODUCT_COLORS, title="Preço médio por combustível", text_auto=".3f")
     fig.update_xaxes(tickprefix="R$ ")
     left.plotly_chart(polish(fig), width="stretch")
-    fig = px.box(filtered, x="produto", y="preco_venda", color="produto", color_discrete_map=PRODUCT_COLORS,
+    # A distribuição visual usa amostra determinística para limitar a serialização no navegador;
+    # todos os KPIs e agregações acima continuam calculados sobre 100% do recorte.
+    distribution = filtered.sample(min(len(filtered), 30_000), random_state=42)
+    fig = px.box(distribution, x="produto", y="preco_venda", color="produto", color_discrete_map=PRODUCT_COLORS,
                  title="Distribuição dos preços", points=False)
     fig.update_yaxes(tickprefix="R$ ")
     right.plotly_chart(polish(fig), width="stretch")
