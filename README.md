@@ -1,5 +1,11 @@
 # FuelPrice Analytics
 
+[![CI](https://github.com/Wwerneck/FuelPrice-Analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Wwerneck/FuelPrice-Analytics/actions/workflows/ci.yml)
+[![Dashboard](https://img.shields.io/badge/Streamlit-Live%20Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://fuelprice-analytics-nh2bn8uwvdyubz9chnbutm.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+
+> **[Acesse o dashboard interativo publicado](https://fuelprice-analytics-nh2bn8uwvdyubz9chnbutm.streamlit.app/)**
+
 Pipeline de engenharia e análise de dados que baixa preços públicos por posto revendedor da ANP, valida o contrato bruto, limpa e transforma os registros, cria features com Pandas/NumPy e publica Parquet, métricas, PostgreSQL e um dashboard Streamlit.
 
 ## Problema e objetivos
