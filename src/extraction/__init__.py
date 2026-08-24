@@ -1,0 +1,1 @@
+"""Extração de fontes externas."""
