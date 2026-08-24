@@ -70,7 +70,7 @@ Requer Python 3.11+.
 ```bash
 python -m venv .venv
 # PowerShell: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-pipeline.txt
 copy .env.example .env
 python main.py
 pytest

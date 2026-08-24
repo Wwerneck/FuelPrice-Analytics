@@ -13,6 +13,24 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-pipeline.txt
       - run: python -m compileall -q config src dashboard airflow
       - run: python -m pytest
+
+  dashboard-cloud-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Execute Streamlit entrypoint
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app = AppTest.from_file("dashboard/app.py", default_timeout=60)
+          app.run()
+          assert not app.exception, [item.value for item in app.exception]
+          PY

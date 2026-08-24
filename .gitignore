@@ -6,6 +6,7 @@ __pycache__/
 .coverage
 htmlcov/
 logs/*.log*
+logs/*.png
 data/raw/*
 data/interim/*
 data/processed/*

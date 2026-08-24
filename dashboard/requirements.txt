@@ -1,5 +1,0 @@
-# Streamlit Community Cloud já fornece Pandas, NumPy e PyArrow como
-# dependências diretas. Manter apenas imports adicionais reduz conflitos
-# entre o resolvedor do Cloud e sua versão de Python.
-streamlit>=1.45,<2.0
-plotly>=5.23,<7.0

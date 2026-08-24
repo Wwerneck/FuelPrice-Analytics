@@ -34,17 +34,17 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements.txt && airflow db migrate && airflow users create --username airflow --password airflow --firstname Fuel --lastname Price --role Admin --email admin@example.com || true"
+    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements-pipeline.txt && airflow db migrate && airflow users create --username airflow --password airflow --firstname Fuel --lastname Price --role Admin --email admin@example.com || true"
 
   airflow-webserver:
     <<: *airflow-common
-    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements.txt && airflow webserver"
+    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements-pipeline.txt && airflow webserver"
     ports: ["8080:8080"]
     restart: unless-stopped
 
   airflow-scheduler:
     <<: *airflow-common
-    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements.txt && airflow scheduler"
+    command: bash -c "pip install --no-cache-dir -r /opt/airflow/project/requirements-pipeline.txt && airflow scheduler"
     restart: unless-stopped
 
 volumes:
