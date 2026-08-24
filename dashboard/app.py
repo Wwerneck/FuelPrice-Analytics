@@ -197,10 +197,14 @@ with competition:
     if {"ETANOL HIDRATADO", "GASOLINA COMUM"} <= set(pivot.columns):
         pivot["relacao"] = pivot["ETANOL HIDRATADO"] / pivot["GASOLINA COMUM"]
         pivot["compensa"] = np.where(pivot.relacao <= ETHANOL_THRESHOLD, "Compensa", "Não compensa")
-        latest = pivot[pivot.ano_mes.eq(pivot.ano_mes.max())].sort_values("relacao")
+        # O snapshot usa categoria ordenada para economizar memória. A conversão
+        # defensiva também mantém compatibilidade com snapshots legados.
+        month_values = pivot["ano_mes"].astype("string")
+        latest_month = month_values.max()
+        latest = pivot[month_values.eq(latest_month)].sort_values("relacao")
         fig = px.bar(latest, x="uf", y="relacao", color="compensa",
                      color_discrete_map={"Compensa": GREEN, "Não compensa": ORANGE},
-                     title=f"Competitividade do etanol por UF — {pivot.ano_mes.max()}")
+                     title=f"Competitividade do etanol por UF — {latest_month}")
         fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED,
                       annotation_text=f"Limiar {ETHANOL_THRESHOLD:.0%}")
         st.plotly_chart(polish(fig, 450), width="stretch")

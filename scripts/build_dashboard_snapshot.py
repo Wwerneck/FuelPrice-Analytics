@@ -13,13 +13,15 @@ COLUMNS = [
     "produto", "revenda", "cnpj_revenda", "preco_venda", "z_score",
     "outlier", "faixa_preco",
 ]
-CATEGORICAL = ["ano_mes", "regiao", "uf", "municipio", "produto", "faixa_preco"]
+CATEGORICAL = ["regiao", "uf", "municipio", "produto", "faixa_preco"]
 
 
 def build_snapshot(source: Path = SOURCE, target: Path = TARGET) -> Path:
     frame = pd.read_parquet(source, columns=COLUMNS)
     for column in CATEGORICAL:
         frame[column] = frame[column].astype("category")
+    months = sorted(frame["ano_mes"].dropna().astype(str).unique())
+    frame["ano_mes"] = pd.Categorical(frame["ano_mes"], categories=months, ordered=True)
     target.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(target, index=False, compression="zstd")
     return target
