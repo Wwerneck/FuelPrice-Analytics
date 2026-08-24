@@ -50,8 +50,12 @@ footer{visibility:hidden}@media(max-width:900px){.block-container{padding-left:1
 
 @st.cache_data(ttl=900, show_spinner="Carregando camada analítica...")
 def load_data() -> pd.DataFrame:
-    path = Path(settings.processed_dir / "fuel_prices.parquet")
-    if not path.exists():
+    candidates = [
+        Path(settings.processed_dir / "fuel_prices.parquet"),
+        Path(settings.base_dir / "data" / "published" / "fuel_prices.parquet"),
+    ]
+    path = next((candidate for candidate in candidates if candidate.exists()), None)
+    if path is None:
         return pd.DataFrame()
     frame = pd.read_parquet(path)
     frame["data_coleta"] = pd.to_datetime(frame["data_coleta"])
