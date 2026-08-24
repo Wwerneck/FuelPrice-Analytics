@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -7,9 +8,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from config.settings import settings
-
 st.set_page_config(page_title="FuelPrice Analytics", page_icon="⛽", layout="wide")
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PUBLISHED_DIR = PROJECT_ROOT / "data" / "published"
+ETHANOL_THRESHOLD = float(os.getenv("ETANOL_THRESHOLD", "0.70"))
 
 NAVY, BLUE, GREEN, ORANGE, RED = "#0B1F33", "#1473E6", "#19A974", "#F59E0B", "#E5484D"
 PRODUCT_COLORS = {
@@ -51,8 +55,8 @@ footer{visibility:hidden}@media(max-width:900px){.block-container{padding-left:1
 @st.cache_data(ttl=900, show_spinner="Carregando camada analítica...")
 def load_data() -> pd.DataFrame:
     candidates = [
-        Path(settings.processed_dir / "fuel_prices.parquet"),
-        Path(settings.base_dir / "data" / "published" / "fuel_prices.parquet"),
+        PROCESSED_DIR / "fuel_prices.parquet",
+        PUBLISHED_DIR / "fuel_prices.parquet",
     ]
     path = next((candidate for candidate in candidates if candidate.exists()), None)
     if path is None:
@@ -192,18 +196,18 @@ with competition:
     pivot = comparison.pivot_table(index=["ano_mes", "uf"], columns="produto", values="preco_venda").reset_index()
     if {"ETANOL HIDRATADO", "GASOLINA COMUM"} <= set(pivot.columns):
         pivot["relacao"] = pivot["ETANOL HIDRATADO"] / pivot["GASOLINA COMUM"]
-        pivot["compensa"] = np.where(pivot.relacao <= settings.ethanol_threshold, "Compensa", "Não compensa")
+        pivot["compensa"] = np.where(pivot.relacao <= ETHANOL_THRESHOLD, "Compensa", "Não compensa")
         latest = pivot[pivot.ano_mes.eq(pivot.ano_mes.max())].sort_values("relacao")
         fig = px.bar(latest, x="uf", y="relacao", color="compensa",
                      color_discrete_map={"Compensa": GREEN, "Não compensa": ORANGE},
                      title=f"Competitividade do etanol por UF — {pivot.ano_mes.max()}")
-        fig.add_hline(y=settings.ethanol_threshold, line_dash="dash", line_color=RED,
-                      annotation_text=f"Limiar {settings.ethanol_threshold:.0%}")
+        fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED,
+                      annotation_text=f"Limiar {ETHANOL_THRESHOLD:.0%}")
         st.plotly_chart(polish(fig, 450), width="stretch")
         left, right = st.columns(2)
         trend = pivot.groupby("ano_mes", as_index=False).relacao.mean()
         fig = px.line(trend, x="ano_mes", y="relacao", markers=True, title="Evolução da relação etanol/gasolina")
-        fig.add_hline(y=settings.ethanol_threshold, line_dash="dash", line_color=RED)
+        fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED)
         left.plotly_chart(polish(fig), width="stretch")
         right.dataframe(latest[["uf", "ETANOL HIDRATADO", "GASOLINA COMUM", "relacao", "compensa"]],
                         hide_index=True, width="stretch")
