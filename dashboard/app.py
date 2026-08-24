@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
@@ -21,12 +22,65 @@ PRODUCT_COLORS = {
     "ETANOL HIDRATADO": GREEN, "DIESEL": ORANGE,
     "DIESEL S10": "#E8732A", "GNV": "#16B8C8",
 }
+PRODUCT_LABELS = {
+    "GASOLINA COMUM": "Gasolina comum", "GASOLINA ADITIVADA": "Gasolina aditivada",
+    "ETANOL HIDRATADO": "Etanol hidratado", "DIESEL": "Diesel",
+    "DIESEL S10": "Diesel S10", "GNV": "GNV",
+}
+REGION_NAMES = {"CO": "Centro-Oeste", "N": "Norte", "NE": "Nordeste", "S": "Sul", "SE": "Sudeste"}
+STATE_NAMES = {
+    "AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas", "BA": "Bahia",
+    "CE": "Ceará", "DF": "Distrito Federal", "ES": "Espírito Santo", "GO": "Goiás",
+    "MA": "Maranhão", "MT": "Mato Grosso", "MS": "Mato Grosso do Sul", "MG": "Minas Gerais",
+    "PA": "Pará", "PB": "Paraíba", "PR": "Paraná", "PE": "Pernambuco", "PI": "Piauí",
+    "RJ": "Rio de Janeiro", "RN": "Rio Grande do Norte", "RS": "Rio Grande do Sul",
+    "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina", "SP": "São Paulo",
+    "SE": "Sergipe", "TO": "Tocantins",
+}
+MONTH_NAMES = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+}
+FILTER_KEYS = (
+    "filter_period_mode", "filter_period_custom", "filter_period_complete", "filter_years", "filter_months",
+    "filter_regions", "filter_states", "filter_products", "filter_cities",
+)
 
 st.markdown("""
 <style>
 .stApp{background:#F5F7FA}.block-container{max-width:1500px;padding-top:1.4rem;padding-bottom:3rem}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#091A2C 0%,#102D49 100%);border-right:1px solid #24445F}
-[data-testid="stSidebar"] *{color:#F8FAFC}[data-testid="stSidebar"] [data-baseweb="select"]>div{background:#173752}
+[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,[data-testid="stSidebar"] p,[data-testid="stSidebar"] label{color:#F8FAFC}
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p{font-weight:650;font-size:.88rem;color:#F8FAFC}
+[data-testid="stSidebar"] [data-baseweb="select"]>div,
+[data-testid="stSidebar"] [data-baseweb="input"]>div{background:#F8FAFC!important;border:1px solid #CBD8E6!important;
+border-radius:10px!important;min-height:44px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+[data-testid="stSidebar"] [data-baseweb="select"]>div:focus-within,
+[data-testid="stSidebar"] [data-baseweb="input"]>div:focus-within{border-color:#55A7FF!important;
+box-shadow:0 0 0 3px rgba(85,167,255,.18)!important}
+[data-testid="stSidebar"] [data-baseweb="select"]>div *,[data-testid="stSidebar"] input{color:#334155!important}
+[data-testid="stSidebar"] [data-baseweb="tag"]{background:#1473E6!important}
+[data-testid="stSidebar"] [data-baseweb="tag"] *{color:white!important}
+[data-testid="stSidebar"] [data-testid="stExpander"]{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.13);
+border-radius:12px;overflow:hidden}
+[data-testid="stSidebar"] .stButton>button{border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.06);
+border-radius:9px;font-weight:650}
+[data-testid="stSidebar"] .stButton>button:hover{border-color:#65B1FF;background:rgba(20,115,230,.2);color:white}
+[data-testid="stSidebar"] .stButton>button *{color:#F8FAFC!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary *{color:#F8FAFC!important}
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] svg{color:#AFC4D8!important;fill:#AFC4D8!important}
+.filter-intro{color:#AFC4D8;font-size:.82rem;line-height:1.45;margin:-2px 0 13px}
+.brand-divider{height:1px;background:rgba(255,255,255,.12);margin:3px 0 5px}
+.filter-step{display:flex;align-items:center;gap:10px;margin:18px 0 7px;padding-top:15px;border-top:1px solid rgba(255,255,255,.1)}
+.filter-step.first{border-top:0;margin-top:8px;padding-top:0}.filter-step-number{display:flex;align-items:center;justify-content:center;
+width:24px;height:24px;border-radius:7px;background:#1473E6;color:white;font-size:.72rem;font-weight:750;box-shadow:0 3px 8px rgba(20,115,230,.28)}
+.filter-step-title{font-size:.9rem;font-weight:750;color:white}.filter-note{color:#9FB5CA;font-size:.74rem;line-height:1.35;margin:-1px 0 8px}
+.filter-result{margin-top:16px;padding:13px 14px;border:1px solid rgba(100,181,246,.28);border-radius:12px;
+background:linear-gradient(135deg,rgba(20,115,230,.17),rgba(255,255,255,.055))}
+.filter-result-label{font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:#9EC9F8;font-weight:750}
+.filter-result-value{font-size:1.08rem;font-weight:750;color:white;margin:3px 0}.filter-result-meta{font-size:.75rem;color:#BDD0E2}
 [data-testid="stMetric"]{background:white;border:1px solid #E1E8F0;border-radius:14px;padding:17px 18px;
 box-shadow:0 3px 14px rgba(11,31,51,.045);min-height:112px}
 [data-testid="stMetricLabel"]{color:#64748B;font-size:.84rem;font-weight:600;letter-spacing:.01em}
@@ -74,6 +128,26 @@ def percent(value: float) -> str:
     return "—" if pd.isna(value) else f"{value:+.2f}%".replace(".", ",")
 
 
+def reset_filters() -> None:
+    for key in FILTER_KEYS:
+        st.session_state.pop(key, None)
+
+
+def keep_valid_selections(key: str, options: list) -> None:
+    """Remove escolhas que deixaram de existir após um filtro hierárquico."""
+    if key not in st.session_state:
+        return
+    valid_options = set(options)
+    st.session_state[key] = [value for value in st.session_state[key] if value in valid_options]
+
+
+def city_label(value: str) -> str:
+    label = str(value).title()
+    for connector in (" Da ", " Das ", " De ", " Do ", " Dos "):
+        label = label.replace(connector, connector.lower())
+    return label
+
+
 def polish(fig, height: int = 420):
     fig.update_layout(height=height, margin=dict(l=20, r=20, t=55, b=25), paper_bgcolor="white",
                       plot_bgcolor="white", font=dict(family="Arial", color=NAVY), legend_title_text="")
@@ -97,28 +171,134 @@ st.markdown(f"""<div class="hero"><div class="hero-brand">Data intelligence plat
 with st.sidebar:
     st.markdown("# ⛽ FuelPrice")
     st.caption("ANALYTICS WORKSPACE")
-    st.divider()
+    st.markdown('<div class="brand-divider"></div>', unsafe_allow_html=True)
     st.markdown("### Filtros da análise")
-    st.caption("Todo o painel responde ao recorte")
-    min_date, max_date = df.data_coleta.min().date(), df.data_coleta.max().date()
-    period = st.date_input("Período", (min_date, max_date), min_value=min_date, max_value=max_date)
-    years = st.multiselect("Ano", sorted(df.ano.dropna().unique()), placeholder="Todos")
-    months = st.multiselect("Mês", sorted(df.mes.dropna().unique()), placeholder="Todos")
-    regions = st.multiselect("Região", sorted(df.regiao.dropna().unique()), placeholder="Todas")
-    states = st.multiselect("Estado", sorted(df.uf.dropna().unique()), placeholder="Todos")
-    products = st.multiselect("Combustível", sorted(df.produto.dropna().unique()), placeholder="Todos")
-    city_source = df[df.uf.isin(states)] if states else df
-    cities = st.multiselect("Município", sorted(city_source.municipio.dropna().unique()), placeholder="Todos")
-    st.divider()
-    st.markdown("<span class='status-dot'></span>Dados processados disponíveis", unsafe_allow_html=True)
-    st.caption(f"{len(df):,.0f} observações na base".replace(",", "."))
+    st.markdown('<div class="filter-intro">Monte seu recorte em três etapas. O painel é atualizado automaticamente.</div>',
+                unsafe_allow_html=True)
+    st.button("Limpar todos os filtros", key="reset_filters", icon=":material/restart_alt:",
+              on_click=reset_filters, width="stretch")
 
-start, end = period if isinstance(period, (tuple, list)) and len(period) == 2 else (period, period)
+    min_date, max_date = df.data_coleta.min().date(), df.data_coleta.max().date()
+    st.markdown('<div class="filter-step first"><span class="filter-step-number">1</span>'
+                '<span class="filter-step-title">Período</span></div>', unsafe_allow_html=True)
+    period_mode = st.selectbox(
+        "Janela de análise",
+        ["Todo o período", "Últimos 30 dias", "Últimos 90 dias", "Personalizado"],
+        key="filter_period_mode",
+        help="Os períodos recentes são calculados a partir da última coleta disponível.",
+    )
+    if period_mode == "Personalizado":
+        period = st.date_input(
+            "Intervalo personalizado", (min_date, max_date), min_value=min_date,
+            max_value=max_date, format="DD/MM/YYYY", key="filter_period_custom",
+        )
+        if isinstance(period, (tuple, list)) and len(period) == 2:
+            start, end = period
+            st.session_state["filter_period_complete"] = (start, end)
+        else:
+            start, end = st.session_state.get("filter_period_complete", (min_date, max_date))
+            st.caption("Selecione também a data final para concluir o intervalo.")
+    elif period_mode == "Últimos 30 dias":
+        start, end = max(min_date, max_date - timedelta(days=29)), max_date
+    elif period_mode == "Últimos 90 dias":
+        start, end = max(min_date, max_date - timedelta(days=89)), max_date
+    else:
+        start, end = min_date, max_date
+    st.markdown(f'<div class="filter-note">Recorte: {start:%d/%m/%Y} — {end:%d/%m/%Y}</div>',
+                unsafe_allow_html=True)
+
+    period_source = df[df.data_coleta.between(pd.Timestamp(start), pd.Timestamp(end))]
+    with st.expander("Filtros avançados", icon=":material/tune:"):
+        st.caption("Refine a janela de análise por calendário.")
+        year_options = sorted(period_source.ano.dropna().unique().tolist())
+        if len(year_options) > 1:
+            keep_valid_selections("filter_years", year_options)
+            years = st.multiselect(
+                "Ano", year_options, key="filter_years", placeholder=f"Todos os anos ({len(year_options)})",
+            )
+        else:
+            years = []
+            st.caption(f"Ano disponível: {year_options[0]}" if year_options else "Nenhum ano disponível")
+        month_options = sorted(period_source.mes.dropna().unique().tolist())
+        keep_valid_selections("filter_months", month_options)
+        months = st.multiselect(
+            "Mês", month_options, format_func=lambda month: MONTH_NAMES.get(int(month), str(month)),
+            key="filter_months", placeholder="Todos os meses",
+        )
+
+    location_source = period_source
+    if years:
+        location_source = location_source[location_source.ano.isin(years)]
+    if months:
+        location_source = location_source[location_source.mes.isin(months)]
+
+    st.markdown('<div class="filter-step"><span class="filter-step-number">2</span>'
+                '<span class="filter-step-title">Localização</span></div>', unsafe_allow_html=True)
+    region_options = sorted(location_source.regiao.dropna().unique().tolist())
+    keep_valid_selections("filter_regions", region_options)
+    regions = st.multiselect(
+        "Região", region_options, format_func=lambda region: REGION_NAMES.get(region, region),
+        key="filter_regions", placeholder=f"Todas as regiões ({len(region_options)})",
+    )
+
+    state_source = location_source[location_source.regiao.isin(regions)] if regions else location_source
+    state_options = sorted(state_source.uf.dropna().unique().tolist())
+    keep_valid_selections("filter_states", state_options)
+    states = st.multiselect(
+        "Estado (UF)", state_options, format_func=lambda uf: f"{STATE_NAMES.get(uf, uf)} ({uf})",
+        key="filter_states", placeholder=f"Todos os estados ({len(state_options)})",
+        help="As opções são ajustadas conforme a região selecionada.",
+    )
+
+    city_source = state_source[state_source.uf.isin(states)] if states else state_source.iloc[0:0]
+    city_options = sorted(city_source.municipio.dropna().unique().tolist()) if states else []
+    keep_valid_selections("filter_cities", city_options)
+    cities = st.multiselect(
+        "Município", city_options, format_func=city_label, key="filter_cities",
+        placeholder="Selecione um estado primeiro" if not states else "Digite para buscar um município",
+        help=("Escolha ao menos um estado para habilitar a busca." if not states else
+              f"Pesquisa disponível em {len(city_options):,} municípios.".replace(",", ".")),
+        disabled=not states,
+    )
+
+    geography_source = state_source[state_source.uf.isin(states)] if states else state_source
+    if cities:
+        geography_source = geography_source[geography_source.municipio.isin(cities)]
+
+    st.markdown('<div class="filter-step"><span class="filter-step-number">3</span>'
+                '<span class="filter-step-title">Combustíveis</span></div>', unsafe_allow_html=True)
+    product_options = sorted(geography_source.produto.dropna().unique().tolist())
+    keep_valid_selections("filter_products", product_options)
+    products = st.multiselect(
+        "Produto analisado", product_options, format_func=lambda product: PRODUCT_LABELS.get(product, product),
+        key="filter_products",
+        placeholder=f"Todos os combustíveis ({len(product_options)})",
+        help="Selecione um ou mais produtos para compará-los.",
+    )
+
 filtered = df[df.data_coleta.between(pd.Timestamp(start), pd.Timestamp(end))].copy()
 for column, values in (("ano", years), ("mes", months), ("regiao", regions), ("uf", states),
                        ("produto", products), ("municipio", cities)):
     if values:
         filtered = filtered[filtered[column].isin(values)]
+
+active_filter_count = sum((
+    period_mode != "Todo o período", bool(years), bool(months), bool(regions),
+    bool(states), bool(products), bool(cities),
+))
+with st.sidebar:
+    result_label = "filtro ativo" if active_filter_count == 1 else "filtros ativos"
+    result_count = f"{len(filtered):,.0f}".replace(",", ".")
+    st.markdown(
+        f'<div class="filter-result"><div class="filter-result-label">Resultado do recorte</div>'
+        f'<div class="filter-result-value">{result_count} observações</div>'
+        f'<div class="filter-result-meta">{active_filter_count} {result_label} · '
+        f'{filtered.uf.nunique()} UFs · {filtered.municipio.nunique()} municípios</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("<span class='status-dot'></span>Dados processados disponíveis", unsafe_allow_html=True)
+    st.caption(f"Base completa: {len(df):,.0f} observações".replace(",", "."))
+
 if filtered.empty:
     st.warning("Nenhum registro corresponde aos filtros selecionados.")
     st.stop()
