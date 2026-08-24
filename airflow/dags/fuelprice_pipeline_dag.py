@@ -3,8 +3,23 @@ from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
 
-from airflow.decorators import dag, task
-from airflow.utils.dates import days_ago
+try:
+    from airflow.decorators import dag, task
+    from airflow.utils.dates import days_ago
+except ModuleNotFoundError as exc:
+    if not (exc.name or "").startswith("airflow"):
+        raise
+
+    # Compatibilidade defensiva: a primeira implantação do portfólio apontou
+    # acidentalmente para esta DAG como entrypoint do Streamlit. Na ausência do
+    # Airflow, preservamos a URL pública encaminhando a execução ao dashboard.
+    import runpy
+
+    import streamlit as st
+
+    dashboard_path = Path(__file__).resolve().parents[2] / "dashboard" / "app.py"
+    runpy.run_path(str(dashboard_path), run_name="__main__")
+    st.stop()
 
 from config.settings import settings
 

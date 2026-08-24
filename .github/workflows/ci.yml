@@ -30,7 +30,8 @@ jobs:
         run: |
           python - <<'PY'
           from streamlit.testing.v1 import AppTest
-          app = AppTest.from_file("dashboard/app.py", default_timeout=60)
-          app.run()
-          assert not app.exception, [item.value for item in app.exception]
+          for entrypoint in ("dashboard/app.py", "airflow/dags/fuelprice_pipeline_dag.py"):
+              app = AppTest.from_file(entrypoint, default_timeout=60)
+              app.run()
+              assert not app.exception, (entrypoint, [item.value for item in app.exception])
           PY
