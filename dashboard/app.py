@@ -108,10 +108,11 @@ footer{visibility:hidden}@media(max-width:900px){.block-container{padding-left:1
 
 @st.cache_data(ttl=900, show_spinner="Carregando camada analítica...")
 def load_data() -> pd.DataFrame:
-    candidates = [
+    configured_path = os.getenv("FUELPRICE_DATA_PATH")
+    candidates = ([Path(configured_path)] if configured_path else [
         PROCESSED_DIR / "fuel_prices.parquet",
         PUBLISHED_DIR / "fuel_prices.parquet",
-    ]
+    ])
     path = next((candidate for candidate in candidates if candidate.exists()), None)
     if path is None:
         return pd.DataFrame()
@@ -328,7 +329,7 @@ overview, geography, competition, quality = st.tabs(
     ["◉ Visão geral", "⌖ Geografia", "◇ Etanol × Gasolina", "✓ Qualidade & Outliers"]
 )
 
-monthly = filtered.groupby(["ano_mes", "produto"], as_index=False).preco_venda.mean()
+monthly = filtered.groupby(["ano_mes", "produto"], as_index=False, observed=True).preco_venda.mean()
 with overview:
     st.markdown('<div class="section-title"><h3>Comportamento de mercado</h3><p>Tendência, posicionamento e dispersão dos combustíveis</p></div>', unsafe_allow_html=True)
     fig = px.line(monthly, x="ano_mes", y="preco_venda", color="produto", markers=True,
@@ -336,7 +337,7 @@ with overview:
     fig.update_yaxes(tickprefix="R$ ")
     st.plotly_chart(polish(fig, 450), width="stretch")
     left, right = st.columns(2)
-    product_avg = filtered.groupby("produto", as_index=False).preco_venda.mean().sort_values("preco_venda")
+    product_avg = filtered.groupby("produto", as_index=False, observed=True).preco_venda.mean().sort_values("preco_venda")
     fig = px.bar(product_avg, x="preco_venda", y="produto", orientation="h", color="produto",
                  color_discrete_map=PRODUCT_COLORS, title="Preço médio por combustível", text_auto=".3f")
     fig.update_xaxes(tickprefix="R$ ")
@@ -352,17 +353,19 @@ with overview:
 with geography:
     st.markdown('<div class="section-title"><h3>Inteligência regional</h3><p>Diferenças de preço, volatilidade e ranking municipal</p></div>', unsafe_allow_html=True)
     left, right = st.columns([1.35, 1])
-    state_avg = filtered.groupby(["uf", "regiao"], as_index=False).preco_venda.mean().sort_values("preco_venda", ascending=False)
+    state_avg = filtered.groupby(["uf", "regiao"], as_index=False, observed=True).preco_venda.mean().sort_values("preco_venda", ascending=False)
     fig = px.bar(state_avg, x="uf", y="preco_venda", color="regiao", title="Preço médio por estado", text_auto=".2f")
     fig.update_yaxes(tickprefix="R$ ")
     left.plotly_chart(polish(fig), width="stretch")
-    region_stats = filtered.groupby("regiao", as_index=False).agg(preco_medio=("preco_venda", "mean"), volatilidade=("preco_venda", "std"))
+    region_stats = filtered.groupby("regiao", as_index=False, observed=True).agg(
+        preco_medio=("preco_venda", "mean"), volatilidade=("preco_venda", "std"))
     fig = px.scatter(region_stats, x="preco_medio", y="volatilidade", text="regiao", size="preco_medio",
                      color="volatilidade", color_continuous_scale="Blues", title="Preço × volatilidade regional")
     fig.update_traces(textposition="top center")
     right.plotly_chart(polish(fig), width="stretch")
     station = "cnpj_revenda" if "cnpj_revenda" in filtered else "revenda"
-    cities_rank = filtered.groupby(["uf", "municipio"], as_index=False).agg(preco_medio=("preco_venda", "mean"), postos=(station, "nunique"))
+    cities_rank = filtered.groupby(["uf", "municipio"], as_index=False, observed=True).agg(
+        preco_medio=("preco_venda", "mean"), postos=(station, "nunique"))
     top = cities_rank.nlargest(15, "preco_medio").sort_values("preco_medio")
     fig = px.bar(top, x="preco_medio", y="municipio", color="uf", orientation="h",
                  title="15 municípios com maior preço médio", hover_data=["postos"])
@@ -372,8 +375,9 @@ with geography:
 with competition:
     st.markdown('<div class="section-title"><h3>Decisão de abastecimento</h3><p>Comparação econômica com limiar configurável de 70%</p></div>', unsafe_allow_html=True)
     base = filtered[filtered.produto.isin(["ETANOL HIDRATADO", "GASOLINA COMUM"])]
-    comparison = base.groupby(["ano_mes", "uf", "produto"], as_index=False).preco_venda.mean()
-    pivot = comparison.pivot_table(index=["ano_mes", "uf"], columns="produto", values="preco_venda").reset_index()
+    comparison = base.groupby(["ano_mes", "uf", "produto"], as_index=False, observed=True).preco_venda.mean()
+    pivot = comparison.pivot_table(
+        index=["ano_mes", "uf"], columns="produto", values="preco_venda", observed=True).reset_index()
     if {"ETANOL HIDRATADO", "GASOLINA COMUM"} <= set(pivot.columns):
         pivot["relacao"] = pivot["ETANOL HIDRATADO"] / pivot["GASOLINA COMUM"]
         pivot["compensa"] = np.where(pivot.relacao <= ETHANOL_THRESHOLD, "Compensa", "Não compensa")
@@ -389,7 +393,7 @@ with competition:
                       annotation_text=f"Limiar {ETHANOL_THRESHOLD:.0%}")
         st.plotly_chart(polish(fig, 450), width="stretch")
         left, right = st.columns(2)
-        trend = pivot.groupby("ano_mes", as_index=False).relacao.mean()
+        trend = pivot.groupby("ano_mes", as_index=False, observed=True).relacao.mean()
         fig = px.line(trend, x="ano_mes", y="relacao", markers=True, title="Evolução da relação etanol/gasolina")
         fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED)
         left.plotly_chart(polish(fig), width="stretch")
@@ -406,7 +410,7 @@ with quality:
     fig = px.pie(counts, names="classe", values="registros", hole=.65, color="classe",
                  color_discrete_map={"Regulares": BLUE, "Outliers": RED}, title="Composição da qualidade")
     left.plotly_chart(polish(fig), width="stretch")
-    volatility = filtered.groupby("produto", as_index=False).agg(
+    volatility = filtered.groupby("produto", as_index=False, observed=True).agg(
         volatilidade=("preco_venda", "std"), amplitude=("preco_venda", lambda s: s.max() - s.min()))
     fig = px.bar(volatility.sort_values("volatilidade"), x="volatilidade", y="produto", orientation="h",
                  color="amplitude", color_continuous_scale="Oranges", title="Volatilidade por combustível")
@@ -417,9 +421,9 @@ with quality:
                  hide_index=True, width="stretch")
 
 st.markdown("### Insights do recorte")
-state_means = filtered.groupby("uf").preco_venda.mean()
-region_volatility = filtered.groupby("regiao").preco_venda.std()
-changes = monthly.sort_values("ano_mes").groupby("produto").preco_venda.agg(["first", "last"])
+state_means = filtered.groupby("uf", observed=True).preco_venda.mean()
+region_volatility = filtered.groupby("regiao", observed=True).preco_venda.std()
+changes = monthly.sort_values("ano_mes").groupby("produto", observed=True).preco_venda.agg(["first", "last"])
 changes["change"] = np.where(changes["first"] > 0, (changes["last"] / changes["first"] - 1) * 100, np.nan)
 top_product = changes.change.idxmax()
 for insight in [

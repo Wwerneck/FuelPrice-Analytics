@@ -1,10 +1,17 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "dashboard" / "app.py"
+PUBLISHED_DATA = APP_PATH.parents[1] / "data" / "published" / "fuel_prices.parquet"
+
+
+@pytest.fixture(autouse=True)
+def use_cloud_snapshot(monkeypatch):
+    monkeypatch.setenv("FUELPRICE_DATA_PATH", str(PUBLISHED_DATA))
 
 
 def run_dashboard() -> AppTest:
