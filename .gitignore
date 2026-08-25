@@ -7,6 +7,7 @@ __pycache__/
 htmlcov/
 logs/*.log*
 logs/*.png
+exports/
 data/raw/*
 data/interim/*
 data/processed/*

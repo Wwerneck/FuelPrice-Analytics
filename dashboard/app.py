@@ -333,20 +333,23 @@ monthly = filtered.groupby(["ano_mes", "produto"], as_index=False, observed=True
 with overview:
     st.markdown('<div class="section-title"><h3>Comportamento de mercado</h3><p>Tendência, posicionamento e dispersão dos combustíveis</p></div>', unsafe_allow_html=True)
     fig = px.line(monthly, x="ano_mes", y="preco_venda", color="produto", markers=True,
-                  color_discrete_map=PRODUCT_COLORS, title="Evolução do preço médio")
+                  color_discrete_map=PRODUCT_COLORS, title="Evolução do preço médio",
+                  labels={"ano_mes": "Mês", "preco_venda": "Preço médio (R$)", "produto": "Combustível"})
     fig.update_yaxes(tickprefix="R$ ")
     st.plotly_chart(polish(fig, 450), width="stretch")
     left, right = st.columns(2)
     product_avg = filtered.groupby("produto", as_index=False, observed=True).preco_venda.mean().sort_values("preco_venda")
     fig = px.bar(product_avg, x="preco_venda", y="produto", orientation="h", color="produto",
-                 color_discrete_map=PRODUCT_COLORS, title="Preço médio por combustível", text_auto=".3f")
+                 color_discrete_map=PRODUCT_COLORS, title="Preço médio por combustível", text_auto=".3f",
+                 labels={"preco_venda": "Preço médio (R$)", "produto": "Combustível"})
     fig.update_xaxes(tickprefix="R$ ")
     left.plotly_chart(polish(fig), width="stretch")
     # A distribuição visual usa amostra determinística para limitar a serialização no navegador;
     # todos os KPIs e agregações acima continuam calculados sobre 100% do recorte.
     distribution = filtered.sample(min(len(filtered), 30_000), random_state=42)
     fig = px.box(distribution, x="produto", y="preco_venda", color="produto", color_discrete_map=PRODUCT_COLORS,
-                 title="Distribuição dos preços", points=False)
+                 title="Distribuição dos preços", points=False,
+                 labels={"produto": "Combustível", "preco_venda": "Preço de venda (R$)"})
     fig.update_yaxes(tickprefix="R$ ")
     right.plotly_chart(polish(fig), width="stretch")
 
@@ -354,13 +357,15 @@ with geography:
     st.markdown('<div class="section-title"><h3>Inteligência regional</h3><p>Diferenças de preço, volatilidade e ranking municipal</p></div>', unsafe_allow_html=True)
     left, right = st.columns([1.35, 1])
     state_avg = filtered.groupby(["uf", "regiao"], as_index=False, observed=True).preco_venda.mean().sort_values("preco_venda", ascending=False)
-    fig = px.bar(state_avg, x="uf", y="preco_venda", color="regiao", title="Preço médio por estado", text_auto=".2f")
+    fig = px.bar(state_avg, x="uf", y="preco_venda", color="regiao", title="Preço médio por estado", text_auto=".2f",
+                 labels={"uf": "UF", "preco_venda": "Preço médio (R$)", "regiao": "Região"})
     fig.update_yaxes(tickprefix="R$ ")
     left.plotly_chart(polish(fig), width="stretch")
     region_stats = filtered.groupby("regiao", as_index=False, observed=True).agg(
         preco_medio=("preco_venda", "mean"), volatilidade=("preco_venda", "std"))
     fig = px.scatter(region_stats, x="preco_medio", y="volatilidade", text="regiao", size="preco_medio",
-                     color="volatilidade", color_continuous_scale="Blues", title="Preço × volatilidade regional")
+                     color="volatilidade", color_continuous_scale="Blues", title="Preço × volatilidade regional",
+                     labels={"preco_medio": "Preço médio (R$)", "volatilidade": "Volatilidade"})
     fig.update_traces(textposition="top center")
     right.plotly_chart(polish(fig), width="stretch")
     station = "cnpj_revenda" if "cnpj_revenda" in filtered else "revenda"
@@ -368,7 +373,8 @@ with geography:
         preco_medio=("preco_venda", "mean"), postos=(station, "nunique"))
     top = cities_rank.nlargest(15, "preco_medio").sort_values("preco_medio")
     fig = px.bar(top, x="preco_medio", y="municipio", color="uf", orientation="h",
-                 title="15 municípios com maior preço médio", hover_data=["postos"])
+                 title="15 municípios com maior preço médio", hover_data=["postos"],
+                 labels={"preco_medio": "Preço médio (R$)", "municipio": "Município", "uf": "UF"})
     fig.update_xaxes(tickprefix="R$ ")
     st.plotly_chart(polish(fig, 480), width="stretch")
 
@@ -388,17 +394,22 @@ with competition:
         latest = pivot[month_values.eq(latest_month)].sort_values("relacao")
         fig = px.bar(latest, x="uf", y="relacao", color="compensa",
                      color_discrete_map={"Compensa": GREEN, "Não compensa": ORANGE},
-                     title=f"Competitividade do etanol por UF — {latest_month}")
+                     title=f"Competitividade do etanol por UF — {latest_month}",
+                     labels={"uf": "UF", "relacao": "Relação etanol/gasolina", "compensa": "Decisão"})
         fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED,
                       annotation_text=f"Limiar {ETHANOL_THRESHOLD:.0%}")
         st.plotly_chart(polish(fig, 450), width="stretch")
         left, right = st.columns(2)
         trend = pivot.groupby("ano_mes", as_index=False, observed=True).relacao.mean()
-        fig = px.line(trend, x="ano_mes", y="relacao", markers=True, title="Evolução da relação etanol/gasolina")
+        fig = px.line(trend, x="ano_mes", y="relacao", markers=True,
+                      title="Evolução da relação etanol/gasolina",
+                      labels={"ano_mes": "Mês", "relacao": "Relação etanol/gasolina"})
         fig.add_hline(y=ETHANOL_THRESHOLD, line_dash="dash", line_color=RED)
         left.plotly_chart(polish(fig), width="stretch")
-        right.dataframe(latest[["uf", "ETANOL HIDRATADO", "GASOLINA COMUM", "relacao", "compensa"]],
-                        hide_index=True, width="stretch")
+        comparison_table = latest[["uf", "ETANOL HIDRATADO", "GASOLINA COMUM", "relacao", "compensa"]].rename(
+            columns={"uf": "UF", "ETANOL HIDRATADO": "Etanol (R$)", "GASOLINA COMUM": "Gasolina (R$)",
+                     "relacao": "Relação", "compensa": "Decisão"})
+        right.dataframe(comparison_table, hide_index=True, width="stretch")
     else:
         st.info("Selecione gasolina comum e etanol hidratado para visualizar a comparação.")
 
@@ -413,12 +424,16 @@ with quality:
     volatility = filtered.groupby("produto", as_index=False, observed=True).agg(
         volatilidade=("preco_venda", "std"), amplitude=("preco_venda", lambda s: s.max() - s.min()))
     fig = px.bar(volatility.sort_values("volatilidade"), x="volatilidade", y="produto", orientation="h",
-                 color="amplitude", color_continuous_scale="Oranges", title="Volatilidade por combustível")
+                 color="amplitude", color_continuous_scale="Oranges", title="Volatilidade por combustível",
+                 labels={"volatilidade": "Volatilidade", "produto": "Combustível", "amplitude": "Amplitude"})
     right.plotly_chart(polish(fig), width="stretch")
     st.markdown("#### Registros sinalizados para investigação")
     columns = ["data_coleta", "uf", "municipio", "produto", "revenda", "preco_venda", "z_score", "faixa_preco"]
-    st.dataframe(outliers.sort_values("z_score", key=abs, ascending=False)[columns].head(200),
-                 hide_index=True, width="stretch")
+    outlier_table = outliers.sort_values("z_score", key=abs, ascending=False)[columns].head(200).rename(columns={
+        "data_coleta": "Data da coleta", "uf": "UF", "municipio": "Município", "produto": "Combustível",
+        "revenda": "Revenda", "preco_venda": "Preço de venda", "z_score": "Z-Score", "faixa_preco": "Faixa de preço",
+    })
+    st.dataframe(outlier_table, hide_index=True, width="stretch")
 
 st.markdown("### Insights do recorte")
 state_means = filtered.groupby("uf", observed=True).preco_venda.mean()
@@ -427,10 +442,14 @@ changes = monthly.sort_values("ano_mes").groupby("produto", observed=True).preco
 changes["change"] = np.where(changes["first"] > 0, (changes["last"] / changes["first"] - 1) * 100, np.nan)
 top_product = changes.change.idxmax()
 for insight in [
-    f"**{state_means.idxmax()}** apresentou o maior preço médio: **{money(state_means.max())}**.",
-    f"A região **{region_volatility.idxmax()}** teve a maior volatilidade (**{region_volatility.max():.3f}**).",
-    f"**{top_product}** teve a maior variação no período (**{percent(changes.loc[top_product, 'change'])}**).",
-    f"Foram sinalizados **{int(filtered.outlier.sum()):,} outliers** para investigação, sem remoção automática.".replace(",", "."),
+    f"<strong>{state_means.idxmax()}</strong> apresentou o maior preço médio: "
+    f"<strong>{money(state_means.max())}</strong>.",
+    f"A região <strong>{region_volatility.idxmax()}</strong> teve a maior volatilidade "
+    f"(<strong>{region_volatility.max():.3f}</strong>).",
+    f"<strong>{top_product}</strong> teve a maior variação no período "
+    f"(<strong>{percent(changes.loc[top_product, 'change'])}</strong>).",
+    (f"Foram sinalizados <strong>{int(filtered.outlier.sum()):,} outliers</strong> para investigação, "
+     "sem remoção automática.").replace(",", "."),
 ]:
     st.markdown(f'<div class="insight">{insight}</div>', unsafe_allow_html=True)
 
